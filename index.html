@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Turnos - PNA Paraná</title>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div class="contenedor-principal">
+        
+        <h1>⚓ Turnos Online - Prefectura Paraná</h1>
+        <h2>Oficina de Policía de Seguridad de la Navegación</h2>
+
+        <div id="formulario-turnos">
+            
+            <div class="grupo-control">
+                <label for="tipo-tramite">Tipo de Trámite a realizar:</label>
+                <select id="tipo-tramite" required>
+                    <option value="">-- Seleccione un Trámite --</option>
+                    <option value="inscripcion_rey">Inscripción REY (Registro Especial de Yates)</option>
+                    <option value="inscripcion_para">Inscripción Jurisdiccional (PARA)</option>
+                    <option value="transferencia">Transferencia de Dominio</option>
+                    <option value="cambio_motor">Cambio/Asentamiento de Motor</option>
+                    <option value="marina_mercante">Trámites de Marina Mercante (Cursos/Libretas)</option>
+                    <option value="otros">Otros Trámites</option>
+                </select>
+            </div>
+
+            <div class="grupo-control">
+                <label for="fecha-turno">Seleccione el Día:</label>
+                <input type="date" id="fecha-turno" required>
+            </div>
+
+            <div class="grupo-control">
+                <label for="horario-turno">Horarios Disponibles (7:00 a 13:00):</label>
+                <select id="horario-turno" disabled required>
+                    <option value="">-- Seleccione una Fecha Primero --</option>
+                </select>
+            </div>
+
+            <hr>
+            
+            <div class="grupo-control">
+                <label for="nombre-solicitante">Nombre Completo:</label>
+                <input type="text" id="nombre-solicitante" required>
+            </div>
+            <div class="grupo-control">
+                <label for="dni-solicitante">DNI (sin puntos):</label>
+                <input type="number" id="dni-solicitante" required>
+            </div>
+            
+            <button id="boton-solicitar" disabled>Solicitar Turno</button>
+
+        </div>
+
+        <p id="mensaje-error" class="mensaje-error"></p>
+        <p id="mensaje-exito" class="mensaje-exito"></p>
+
+    </div> 
+
+    <script src="script.js" defer></script> 
+</body>
+</html>
