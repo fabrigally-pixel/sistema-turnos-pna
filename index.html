@@ -3,64 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Turnos - PNA Paraná</title>
-    
+    <title>Turnos Online - Prefectura Paraná</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <div class="contenedor-principal">
-        
-        <h1>⚓ Turnos Online - Prefectura Paraná</h1>
-        <h2>Oficina de Policía de Seguridad de la Navegación</h2>
 
-        <div id="formulario-turnos">
+    <header>
+        <h1>Turnos Online - Prefectura Paraná</h1>
+        <p>Oficina de Policía de Seguridad de la Navegación</p>
+    </header>
+
+    <main class="contenedor-turnos">
+        
+        <h2>Solicitud de Turno</h2>
+
+        <div id="mensaje-exito" class="mensaje exito" style="display: none;"></div>
+        <div id="mensaje-error" class="mensaje error" style="display: none;"></div>
+
+        <form id="formulario-turnos">
             
-            <div class="grupo-control">
+            <div class="campo">
                 <label for="tipo-tramite">Tipo de Trámite a realizar:</label>
                 <select id="tipo-tramite" required>
                     <option value="">-- Seleccione un Trámite --</option>
-                    <option value="inscripcion_rey">Inscripción REY (Registro Especial de Yates)</option>
-                    <option value="inscripcion_para">Inscripción Jurisdiccional (PARA)</option>
-                    <option value="transferencia">Transferencia de Dominio</option>
-                    <option value="cambio_motor">Cambio/Asentamiento de Motor</option>
-                    <option value="marina_mercante">Trámites de Marina Mercante (Cursos/Libretas)</option>
-                    <option value="otros">Otros Trámites</option>
+                    <option value="matricula">Matriculación y cambio de dominio</option>
+                    <option value="renovacion">Renovación y Duplicado de Carnet Náutico</option>
+                    <option value="curso">Inscripción a Cursos de Conductor Náutico</option>
+                    <option value="patente">Pago de Patente Anual</option>
+                    <option value="inspeccion">Inspección Técnica de Embarcaciones</option>
                 </select>
             </div>
 
-            <div class="grupo-control">
+            <div class="campo">
                 <label for="fecha-turno">Seleccione el Día:</label>
                 <input type="date" id="fecha-turno" required>
             </div>
 
-            <div class="grupo-control">
+            <div class="campo">
                 <label for="horario-turno">Horarios Disponibles (7:00 a 13:00):</label>
                 <select id="horario-turno" disabled required>
                     <option value="">-- Seleccione una Fecha Primero --</option>
                 </select>
             </div>
 
-            <hr>
-            
-            <div class="grupo-control">
+            <h3>Datos del Solicitante</h3>
+
+            <div class="campo">
                 <label for="nombre-solicitante">Nombre Completo:</label>
-                <input type="text" id="nombre-solicitante" required>
+                <input type="text" id="nombre-solicitante" placeholder="Ej: Juan Pérez" required>
             </div>
-            <div class="grupo-control">
+
+            <div class="campo">
                 <label for="dni-solicitante">DNI (sin puntos):</label>
-                <input type="number" id="dni-solicitante" required>
+                <input type="number" id="dni-solicitante" placeholder="Ej: 30123456" required>
             </div>
-            
-            <button id="boton-solicitar" disabled>Solicitar Turno</button>
 
-        </div>
+            <button type="button" id="boton-solicitar" disabled>Solicitar Turno</button>
+        </form>
 
-        <p id="mensaje-error" class="mensaje-error"></p>
-        <p id="mensaje-exito" class="mensaje-exito"></p>
+    </main>
 
-    </div> 
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
 
-    <script src="script.js" defer></script> 
+    <script src="script.js" defer></script>
 </body>
 </html>
