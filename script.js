@@ -59,7 +59,6 @@ function mostrarMensaje(id, texto, mostrar) {
 
 // --- FUNCIONES DE ADMINISTRACIÓN (admin.html) ---
 
-// 💡 Nuevo: Hacemos esta función global para que pueda ser llamada en cualquier momento
 function dibujarTablaAdmin(fechaFiltro) {
     const contenedorTabla = document.getElementById('contenedor-tabla');
     const totalTurnosElemento = document.getElementById('total-turnos');
@@ -165,19 +164,10 @@ async function cargarTurnos() {
         
         console.log(`Turnos cargados desde Firestore: ${turnosTomados.length}`);
         
-        // CORRECCIÓN CLAVE: Si estamos en el Admin y los datos se cargaron, 
-        // intentamos redibujar la tabla con el filtro de fecha actual.
-        if (esAdmin) {
-            const filtroFecha = document.getElementById('filtro-fecha');
-            // Solo dibuja si el filtro existe (es decir, ya se hizo login)
-            if (filtroFecha && document.getElementById('dashboard-contenido').style.display === 'block') {
-                dibujarTablaAdmin(filtroFecha.value);
-            }
-        }
-
+        // Se eliminó la lógica de redibujar el dashboard de aquí
+        
     } catch (error) {
         console.error("Error al cargar turnos desde Firestore:", error);
-        // Este error podría ocurrir si las reglas de seguridad son demasiado restrictivas
     }
 }
 
@@ -306,101 +296,7 @@ async function procesarSolicitudDeTurno() {
 }
 
 
-// --- FUNCIONES DE ADMINISTRACIÓN (admin.html) ---
-
-function dibujarTablaAdmin(fechaFiltro) {
-    const contenedorTabla = document.getElementById('contenedor-tabla');
-    const totalTurnosElemento = document.getElementById('total-turnos');
-    
-    if (!contenedorTabla || !totalTurnosElemento) return;
-
-    // Filtra y ordena los turnos desde el caché (cargado de Firestore)
-    const turnosFiltrados = turnosTomados
-        .filter(turno => !fechaFiltro || turno.fecha === fechaFiltro)
-        .sort((a, b) => {
-            return a.horario.localeCompare(b.horario);
-        });
-
-    if (turnosFiltrados.length === 0) {
-        contenedorTabla.innerHTML = `<p>No hay turnos registrados para el ${fechaFiltro ? fechaFiltro : 'día seleccionado'}.</p>`;
-        totalTurnosElemento.textContent = '';
-        return;
-    }
-
-    let tablaHTML = `
-        <table class="tabla-turnos">
-            <thead>
-                <tr>
-                    <th>Hora</th>
-                    <th>Trámite</th>
-                    <th>Nombre</th>
-                    <th>DNI</th>
-                    <th>Acción</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    turnosFiltrados.forEach(turno => {
-        // Se intenta obtener el nombre completo del trámite para el dashboard
-        let nombreTramite = turno.tramite; 
-        if (document.getElementById('tipo-tramite')) {
-             nombreTramite = document.querySelector(`select#tipo-tramite option[value="${turno.tramite}"]`).textContent;
-        } else {
-             nombreTramite = turno.tramite.replace(/_/g, ' ').toUpperCase(); 
-        }
-
-        tablaHTML += `
-            <tr>
-                <td>${turno.horario}</td>
-                <td>${nombreTramite}</td>
-                <td>${turno.nombre}</td>
-                <td>${turno.dni}</td>
-                <td><button class="btn-eliminar-admin" data-id="${turno.id}">Atendido/Eliminar</button></td>
-            </tr>
-        `;
-    });
-
-    tablaHTML += `</tbody></table>`;
-    contenedorTabla.innerHTML = tablaHTML;
-    totalTurnosElemento.textContent = `Total de turnos para el día: ${turnosFiltrados.length}`;
-    
-    document.querySelectorAll('.btn-eliminar-admin').forEach(button => {
-        button.addEventListener('click', manejarEliminacionAdmin);
-    });
-}
-
-
-// 💡 FUNCIÓN ASÍNCRONA DE ELIMINACIÓN: Usa Firestore
-async function manejarEliminacionAdmin(event) {
-    const idAEliminar = event.target.dataset.id; 
-    
-    if (confirm("¿Confirma que este turno ha sido ATENDIDO o debe ser ELIMINADO de la Base de Datos?")) {
-        try {
-            // Eliminar el documento de Firestore
-            await coleccionTurnos.doc(idAEliminar).delete();
-            
-            // Recargar la lista global y redibujar el Dashboard
-            await cargarTurnos(); 
-            
-            const filtroFecha = document.getElementById('filtro-fecha').value;
-            dibujarTablaAdmin(filtroFecha);
-            
-            // Si el ciudadano tiene la página abierta, su vista se actualizará al recargar
-            if (inputFecha) { 
-                generarHorariosDisponibles(inputFecha.value);
-            }
-            
-        } catch (error) {
-            console.error("Error al eliminar el turno:", error);
-        }
-    }
-}
-
-
 // --- LÓGICA DE INICIO Y RUTAS (Controla index.html vs admin.html) ---
-
-const esAdmin = window.location.pathname.includes('admin.html');
 
 if (esAdmin) {
     // 💡 Lógica de LOGIN SIMPLE (PIN)
@@ -411,12 +307,34 @@ if (esAdmin) {
     const btnLogin = document.getElementById('btn-login');
     const inputPin = document.getElementById('admin-pin');
     const errorLogin = document.getElementById('login-error');
+    
+    // CORRECCIÓN 1: Convertir iniciarDashboard en asíncrona y hacer que cargue los datos
+    const iniciarDashboard = async () => { 
+        const inputFiltroFecha = document.getElementById('filtro-fecha');
+        
+        const fechaHoy = new Date();
+        const fechaHoyString = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}-${String(fechaHoy.getDate()).padStart(2, '0')}`;
+        
+        inputFiltroFecha.value = fechaHoyString;
+        document.getElementById('fecha-hoy').textContent = `Turnos del: ${fechaHoyString}`;
 
+        inputFiltroFecha.addEventListener('change', () => {
+            dibujarTablaAdmin(inputFiltroFecha.value);
+            document.getElementById('fecha-hoy').textContent = `Turnos del: ${inputFiltroFecha.value}`;
+        });
+        
+        // Esperar a que los turnos se carguen antes de dibujar la tabla
+        await cargarTurnos(); 
+        dibujarTablaAdmin(fechaHoyString);
+    };
+
+
+    // CORRECCIÓN 2: Llamar a iniciarDashboard en lugar de cargarTurnos en el login
     const intentarLogin = () => {
         if (inputPin.value === PIN_CORRECTO) {
             areaLogin.style.display = 'none';
             dashboardContenido.style.display = 'block';
-            cargarTurnos(); // Inicia la carga desde Firebase y llama a iniciarDashboard
+            iniciarDashboard(); // Llama a la función que inicializa UI y datos
         } else {
             errorLogin.textContent = 'PIN incorrecto. Intente de nuevo.';
             errorLogin.style.display = 'block';
@@ -430,23 +348,6 @@ if (esAdmin) {
             if (e.key === 'Enter') intentarLogin();
         });
     }
-
-    const iniciarDashboard = () => {
-        const inputFiltroFecha = document.getElementById('filtro-fecha');
-        
-        const fechaHoy = new Date();
-        const fechaHoyString = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}-${String(fechaHoy.getDate()).padStart(2, '0')}`;
-        
-        inputFiltroFecha.value = fechaHoyString;
-        document.getElementById('fecha-hoy').textContent = `Turnos del: ${fechaHoyString}`;
-
-        inputFiltroFecha.addEventListener('change', () => {
-            dibujarTablaAdmin(inputFiltroFecha.value);
-            document.getElementById('fecha-hoy').textContent = `Turnos del: ${inputFiltroFecha.value}`;
-        });
-        
-        dibujarTablaAdmin(fechaHoyString);
-    };
     
 } else {
     // 💡 Lógica para la Vista del Ciudadano (index.html)
