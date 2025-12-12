@@ -164,8 +164,6 @@ async function cargarTurnos() {
         
         console.log(`Turnos cargados desde Firestore: ${turnosTomados.length}`);
         
-        // Se eliminó la lógica de redibujar el dashboard de aquí
-        
     } catch (error) {
         console.error("Error al cargar turnos desde Firestore:", error);
     }
@@ -308,7 +306,7 @@ if (esAdmin) {
     const inputPin = document.getElementById('admin-pin');
     const errorLogin = document.getElementById('login-error');
     
-    // CORRECCIÓN 1: Convertir iniciarDashboard en asíncrona y hacer que cargue los datos
+    // Función de inicialización del Dashboard
     const iniciarDashboard = async () => { 
         const inputFiltroFecha = document.getElementById('filtro-fecha');
         
@@ -323,18 +321,19 @@ if (esAdmin) {
             document.getElementById('fecha-hoy').textContent = `Turnos del: ${inputFiltroFecha.value}`;
         });
         
-        // Esperar a que los turnos se carguen antes de dibujar la tabla
+        // Cargar datos ANTES de dibujar la tabla
         await cargarTurnos(); 
         dibujarTablaAdmin(fechaHoyString);
     };
 
 
-    // CORRECCIÓN 2: Llamar a iniciarDashboard en lugar de cargarTurnos en el login
+    // Función de Login
     const intentarLogin = () => {
-        if (inputPin.value === PIN_CORRECTO) {
+        // CORRECCIÓN CLAVE: Usar .trim() para evitar errores por espacios en blanco.
+        if (inputPin.value.trim() === PIN_CORRECTO) { 
             areaLogin.style.display = 'none';
             dashboardContenido.style.display = 'block';
-            iniciarDashboard(); // Llama a la función que inicializa UI y datos
+            iniciarDashboard(); // Inicia la carga de datos y el dashboard
         } else {
             errorLogin.textContent = 'PIN incorrecto. Intente de nuevo.';
             errorLogin.style.display = 'block';
@@ -342,6 +341,7 @@ if (esAdmin) {
         }
     };
     
+    // Asignación de Eventos
     if (btnLogin && inputPin) {
         btnLogin.addEventListener('click', intentarLogin);
         inputPin.addEventListener('keypress', (e) => {
