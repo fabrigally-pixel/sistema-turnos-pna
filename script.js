@@ -4,22 +4,19 @@ console.log("Sistema de Turnos PNA Paraná JS cargado. (Firebase ON)");
 
 // ====================================================================
 // 1. CONFIGURACIÓN DE FIREBASE Y BASE DE DATOS (Firestore)
-// ⚠️ IMPORTANTE: ESTA CONFIGURACIÓN DEBE COINCIDIR CON TU NUEVO PROYECTO 
-//               'turnos-pna-parana-nuevo' en la consola de Firebase.
+//    CLAVES DEL PROYECTO 'turnos-pna-parana-nuevo' (Versión 8 CDN Compatible)
 // ====================================================================
 const firebaseConfig = {
-    // 🔑 TUS CLAVES PROPORCIONADAS PARA EL NUEVO PROYECTO 🔑
-    // **Si las claves de tu nuevo proyecto son diferentes a las de abajo,
-    // **DEBES ACTUALIZARLAS AQUI con la configuración de 'turnos-pna-parana-nuevo'.
-    apiKey: "AIzaSyAHMs2qHywQJaFurCiwnCQIVH8QJawwVkE", 
-    authDomain: "turnospnaparana.firebaseapp.com",
-    projectId: "turnos-pna-parana-nuevo", // <--- ¡CAMBIO CLAVE! Nuevo Project ID
-    storageBucket: "turnospnaparana.firebasestorage.app",
-    messagingSenderId: "108098927642",
-    appId: "1:108098927642:web:0b40d23a4aebafc40a25a3"
+    // 🔑 CLAVES OBTENIDAS DE LA CONSOLA (¡ESTAS SON LAS CORRECTAS!) 🔑
+    apiKey: "AIzaSyBTLZI20dEdAbcnxlZ1YnvMz3twmhyvH_A",
+    authDomain: "turnos-pna-parana-nuevo.firebaseapp.com",
+    projectId: "turnos-pna-parana-nuevo",
+    storageBucket: "turnos-pna-parana-nuevo.firebasestorage.app",
+    messagingSenderId: "1026768851982",
+    appId: "1:1026768851982:web:6f6bfdd3bb3dc3d2b4585f"
 };
 
-// Inicializa Firebase (usando el formato de SDK CDN)
+// Inicializa Firebase (usando la sintaxis de SDK V8)
 if (typeof firebase !== 'undefined' && firebase.apps.length === 0) {
     // Verificamos si ya existe una app para evitar re-inicializaciones.
     let app = firebase.apps.find(app => app.name === '[DEFAULT]');
@@ -149,10 +146,9 @@ async function manejarEliminacionAdmin(event) {
             await coleccionTurnos.doc(idAEliminar).delete();
             
             // Recarga los turnos y actualiza la tabla del administrador
-            await cargarTurnos(); 
             
             const filtroFecha = document.getElementById('filtro-fecha').value;
-            dibujarTablaAdmin(filtroFecha);
+            // No es necesario llamar a dibujarTablaAdmin aquí, el listener lo hace
             
             // Si también estamos en la vista de ciudadano abierta, actualiza horarios
             if (inputFecha) { 
@@ -167,10 +163,8 @@ async function manejarEliminacionAdmin(event) {
 
 
 // 💡 FUNCIÓN ASÍNCRONA DE CARGA: Usa Firestore
-// Ahora usa un listener para actualizar la caché automáticamente
+// Usa un listener para actualizar la caché automáticamente (onSnapshot)
 function iniciarListenerTurnos(callback) {
-    // Usamos onSnapshot para mantener la caché 'turnosTomados' sincronizada
-    // y actualiza la tabla de administración en tiempo real.
     coleccionTurnos.onSnapshot(snapshot => {
         turnosTomados = snapshot.docs.map(doc => ({
             id: doc.id, 
@@ -179,7 +173,7 @@ function iniciarListenerTurnos(callback) {
         
         console.log(`Turnos actualizados desde Firestore: ${turnosTomados.length}`);
         
-        // Ejecuta el callback, ya sea para iniciar el dashboard o generar horarios
+        // Ejecuta el callback
         if (callback) {
             callback();
         }
@@ -300,9 +294,8 @@ async function procesarSolicitudDeTurno() {
     };
     
     try {
+        // La llamada a coleccionTurnos.add() debería ser exitosa ahora.
         await coleccionTurnos.add(nuevoTurnoData);
-        
-        // La caché y los horarios se actualizarán automáticamente gracias al listener
         
         mostrarMensaje('mensaje-exito', `✅ Turno CONFIRMADO para ${nombre} el ${fecha} a las ${horario}. Se ha enviado la confirmación a ${correo}.`, true);
         
@@ -311,6 +304,7 @@ async function procesarSolicitudDeTurno() {
         botonSolicitar.disabled = true;
 
     } catch (error) {
+        // Si hay un error aquí, ya no debería ser por las claves de Firebase.
         mostrarMensaje('mensaje-error', 'Error al guardar el turno en la Base de Datos. Verifique su conexión.', true);
         console.error("Error al guardar en Firestore: ", error);
     }
