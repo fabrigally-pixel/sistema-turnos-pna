@@ -1,13 +1,10 @@
 // script.js
-
-console.log("Sistema de Turnos PNA Paraná JS cargado. (Firebase ON)");
+console.log("Sistema de Turnos PNA Paraná JS cargado. (Proyecto: turnos-pna-parana-nuevo)");
 
 // ====================================================================
 // 1. CONFIGURACIÓN DE FIREBASE Y BASE DE DATOS (Firestore)
-//    CLAVES DEL PROYECTO 'turnos-pna-parana-nuevo' (Versión 8 CDN Compatible)
 // ====================================================================
 const firebaseConfig = {
-    // 🔑 CLAVES OBTENIDAS DE LA CONSOLA (¡ESTAS SON LAS CORRECTAS!) 🔑
     apiKey: "AIzaSyBTLZI20dEdAbcnxlZ1YnvMz3twmhyvH_A",
     authDomain: "turnos-pna-parana-nuevo.firebaseapp.com",
     projectId: "turnos-pna-parana-nuevo",
@@ -16,40 +13,37 @@ const firebaseConfig = {
     appId: "1:1026768851982:web:6f6bfdd3bb3dc3d2b4585f"
 };
 
-// Inicializa Firebase (usando la sintaxis de SDK V8)
+// Inicializa Firebase verificando si ya existe una instancia
 if (typeof firebase !== 'undefined' && firebase.apps.length === 0) {
-    // Verificamos si ya existe una app para evitar re-inicializaciones.
-    let app = firebase.apps.find(app => app.name === '[DEFAULT]');
-    if (!app) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    firebase.initializeApp(firebaseConfig);
 }
 
 // Referencia global a la Base de Datos y la Colección
 const db = firebase.firestore();
-const coleccionTurnos = db.collection('turnosPNA');
+const coleccionTurnos = db.collection('turnosPNA'); // Debe coincidir con las reglas de Firestore
 
-
-// 2. DEFINICIÓN DE HORARIOS y LÍMITES
+// ====================================================================
+// 2. DEFINICIÓN DE HORARIOS, LÍMITES Y VARIABLES GLOBALES
+// ====================================================================
 const HORA_INICIO = 7; 
 const HORA_FIN = 13; 
 const INTERVALO_MINUTOS = 15; 
 
-// 3. Caché local para la disponibilidad (se llena desde Firebase)
+// Caché local para la disponibilidad (se sincroniza con Firebase)
 let turnosTomados = []; 
 
-// 4. Obtener referencias del DOM (válido para index.html)
+// Referencias del DOM para index.html
 const inputFecha = document.getElementById('fecha-turno');
 const selectHorario = document.getElementById('horario-turno');
 const botonSolicitar = document.getElementById('boton-solicitar');
 
-// 5. Determinar la ruta
+// Determinar si estamos en la vista de administración
 const esAdmin = window.location.pathname.includes('admin.html');
-// 🔑 Token para el login persistente
 const ADMIN_SESSION_TOKEN = 'pna_admin_token'; 
 
-
-// --- FUNCIONES DE UTILIDAD Y PERSISTENCIA ---
+// ====================================================================
+// 3. FUNCIONES DE UTILIDAD (Mensajes y UI)
+// ====================================================================
 
 function mostrarMensaje(id, texto, mostrar) {
     const elemento = document.getElementById(id);
@@ -57,6 +51,7 @@ function mostrarMensaje(id, texto, mostrar) {
         elemento.textContent = texto;
         elemento.style.display = mostrar ? 'block' : 'none';
         
+        // Ocultar el mensaje opuesto
         const otroId = (id === 'mensaje-error') ? 'mensaje-exito' : 'mensaje-error';
         const otroElemento = document.getElementById(otroId);
         if(otroElemento) {
@@ -65,8 +60,9 @@ function mostrarMensaje(id, texto, mostrar) {
     }
 }
 
-
-// --- FUNCIONES DE ADMINISTRACIÓN (admin.html) ---
+// ====================================================================
+// 4. FUNCIONES DE ADMINISTRACIÓN (admin.html)
+// ====================================================================
 
 function dibujarTablaAdmin(fechaFiltro) {
     const contenedorTabla = document.getElementById('contenedor-tabla');
@@ -74,12 +70,10 @@ function dibujarTablaAdmin(fechaFiltro) {
     
     if (!contenedorTabla || !totalTurnosElemento) return;
 
-    // Filtra y ordena los turnos desde el caché (cargado de Firestore)
+    // Filtra y ordena los turnos desde el caché
     const turnosFiltrados = turnosTomados
         .filter(turno => !fechaFiltro || turno.fecha === fechaFiltro)
-        .sort((a, b) => {
-            return a.horario.localeCompare(b.horario);
-        });
+        .sort((a, b) => a.horario.localeCompare(b.horario));
 
     if (turnosFiltrados.length === 0) {
         contenedorTabla.innerHTML = `<p>No hay turnos registrados para el ${fechaFiltro ? fechaFiltro : 'día seleccionado'}.</p>`;
@@ -102,19 +96,8 @@ function dibujarTablaAdmin(fechaFiltro) {
     `;
 
     turnosFiltrados.forEach(turno => {
-        // Intenta obtener el nombre completo del trámite (si está disponible en el DOM)
-        let nombreTramite = turno.tramite; 
-        try {
-            const selectElement = document.getElementById('tipo-tramite');
-            if (selectElement) {
-                nombreTramite = selectElement.querySelector(`option[value="${turno.tramite}"]`).textContent;
-            } else {
-                // Si no está el select (estamos en admin), formatea el valor guardado
-                nombreTramite = turno.tramite.replace(/_/g, ' ').toUpperCase(); 
-            }
-        } catch (e) {
-            nombreTramite = turno.tramite; // Si falla, usa el valor crudo
-        }
+        // Formatear el nombre del trámite para que sea legible
+        let nombreTramite = turno.tramite ? turno.tramite.replace(/_/g, ' ').toUpperCase() : "OTROS";
 
         tablaHTML += `
             <tr>
@@ -131,59 +114,52 @@ function dibujarTablaAdmin(fechaFiltro) {
     contenedorTabla.innerHTML = tablaHTML;
     totalTurnosElemento.textContent = `Total de turnos para el día: ${turnosFiltrados.length}`;
     
+    // Agregar eventos a los nuevos botones de eliminación
     document.querySelectorAll('.btn-eliminar-admin').forEach(button => {
         button.addEventListener('click', manejarEliminacionAdmin);
     });
 }
 
-
-// 💡 FUNCIÓN ASÍNCRONA DE ELIMINACIÓN: Usa Firestore
 async function manejarEliminacionAdmin(event) {
     const idAEliminar = event.target.dataset.id; 
     
     if (confirm("¿Confirma que este turno ha sido ATENDIDO o debe ser ELIMINADO de la Base de Datos?")) {
         try {
             await coleccionTurnos.doc(idAEliminar).delete();
-            
-            // Recarga los turnos y actualiza la tabla del administrador
-            
-            const filtroFecha = document.getElementById('filtro-fecha').value;
-            // No es necesario llamar a dibujarTablaAdmin aquí, el listener lo hace
-            
-            // Si también estamos en la vista de ciudadano abierta, actualiza horarios
-            if (inputFecha) { 
-                generarHorariosDisponibles(inputFecha.value);
-            }
-            
+            console.log("Turno eliminado con éxito.");
         } catch (error) {
             console.error("Error al eliminar el turno:", error);
+            alert("No se pudo eliminar el turno. Verifique los permisos.");
         }
     }
 }
 
+// ====================================================================
+// 5. LÓGICA DE SINCRONIZACIÓN (Firestore Listener)
+// ====================================================================
 
-// 💡 FUNCIÓN ASÍNCRONA DE CARGA: Usa Firestore
-// Usa un listener para actualizar la caché automáticamente (onSnapshot)
 function iniciarListenerTurnos(callback) {
+    // Escucha cambios en la base de datos en tiempo real
     coleccionTurnos.onSnapshot(snapshot => {
         turnosTomados = snapshot.docs.map(doc => ({
             id: doc.id, 
             ...doc.data() 
         }));
         
-        console.log(`Turnos actualizados desde Firestore: ${turnosTomados.length}`);
+        console.log(`Sincronización: ${turnosTomados.length} turnos cargados.`);
         
-        // Ejecuta el callback
         if (callback) {
             callback();
         }
     }, error => {
-        console.error("Error al escuchar los turnos desde Firestore:", error);
+        console.error("Error en la conexión con Firestore:", error);
+        mostrarMensaje('mensaje-error', 'Error de conexión con la base de datos.', true);
     });
 }
 
-
-// --- FUNCIÓN CLAVE: GENERACIÓN DE HORARIOS (index.html) ---
+// ====================================================================
+// 6. GENERACIÓN DE HORARIOS Y VALIDACIONES (index.html)
+// ====================================================================
 
 function generarHorariosDisponibles(fechaSeleccionada) {
     if (!selectHorario) return; 
@@ -193,22 +169,24 @@ function generarHorariosDisponibles(fechaSeleccionada) {
     
     if (!fechaSeleccionada) return; 
     
+    // Validar Fines de Semana
     const fechaSeleccionadaUTC = fechaSeleccionada + 'T00:00:00'; 
     const diaDeLaSemana = new Date(fechaSeleccionadaUTC).getDay();
     
     if (diaDeLaSemana === 0 || diaDeLaSemana === 6) {
-        selectHorario.innerHTML = '<option value="">Día no hábil (Sábados y Domingos)</option>';
+        selectHorario.innerHTML = '<option value="">Día no hábil</option>';
         mostrarMensaje('mensaje-error', 'La oficina atiende únicamente de Lunes a Viernes.', true);
         return;
     }
     
+    // Validar que no sea una fecha pasada
     const hoy = new Date();
-    const fechaTurnoObj = new Date(fechaSeleccionadaUTC); 
     const hoyMedianoche = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    const fechaTurnoObj = new Date(fechaSeleccionadaUTC); 
     
     if (fechaTurnoObj < hoyMedianoche) {
         selectHorario.innerHTML = '<option value="">Fecha pasada</option>';
-        mostrarMensaje('mensaje-error', 'No puede solicitar turnos para fechas pasadas.', true);
+        mostrarMensaje('mensaje-error', 'No se pueden solicitar turnos para fechas anteriores a hoy.', true);
         return;
     }
 
@@ -218,17 +196,17 @@ function generarHorariosDisponibles(fechaSeleccionada) {
     let minutosActuales = 0;
     let hayTurnosDisponibles = false;
     
+    // Ciclo para generar intervalos de 15 minutos
     while (horaActual < HORA_FIN || (horaActual === HORA_FIN && minutosActuales === 0)) {
         
-        const horaFormateada = String(horaActual).padStart(2, '0');
-        const minutosFormateados = String(minutosActuales).padStart(2, '0');
-        const horario = `${horaFormateada}:${minutosFormateados}`; 
+        const horario = `${String(horaActual).padStart(2, '0')}:${String(minutosActuales).padStart(2, '0')}`; 
         
-        const turnoYaTomado = turnosTomados.some(turno => 
+        // Verificar si el horario ya está ocupado en la fecha seleccionada
+        const turnoOcupado = turnosTomados.some(turno => 
             turno.fecha === fechaSeleccionada && turno.horario === horario
         );
         
-        if (!turnoYaTomado) {
+        if (!turnoOcupado) {
             const option = document.createElement('option');
             option.value = horario;
             option.textContent = horario;
@@ -237,30 +215,23 @@ function generarHorariosDisponibles(fechaSeleccionada) {
         }
 
         minutosActuales += INTERVALO_MINUTOS;
-        
         if (minutosActuales >= 60) {
             horaActual++;
             minutosActuales = 0;
-        }
-
-        if (horaActual > HORA_FIN) {
-            break; 
         }
     }
     
     if (hayTurnosDisponibles) {
         selectHorario.disabled = false;
-        mostrarMensaje('mensaje-error', '', false);
     } else { 
-        selectHorario.innerHTML = '<option value="">No hay turnos disponibles para este día</option>';
-        mostrarMensaje('mensaje-error', 'Todos los turnos entre 07:00 y 13:00 han sido tomados.', true);
+        selectHorario.innerHTML = '<option value="">No hay disponibilidad</option>';
+        mostrarMensaje('mensaje-error', 'No quedan turnos disponibles para la fecha seleccionada.', true);
     }
-    
-    if (botonSolicitar) botonSolicitar.disabled = true;
 }
 
-
-// --- LÓGICA DE SOLICITUD DE TURNO (index.html) ---
+// ====================================================================
+// 7. PROCESO DE RESERVA (Guardar en Firebase)
+// ====================================================================
 
 async function procesarSolicitudDeTurno() {
     const tramite = document.getElementById('tipo-tramite').value;
@@ -270,16 +241,19 @@ async function procesarSolicitudDeTurno() {
     const dni = document.getElementById('dni-solicitante').value.trim();
     const correo = document.getElementById('correo-solicitante').value.trim(); 
     
+    // Validación de campos vacíos
     if (!tramite || !fecha || !horario || !nombre || !dni || !correo) {
-        mostrarMensaje('mensaje-error', 'Por favor, complete todos los campos del formulario, incluyendo el correo electrónico.', true);
+        mostrarMensaje('mensaje-error', 'Por favor, complete todos los campos, incluido el correo electrónico.', true);
         return;
     }
     
-    const nombreTramite = document.querySelector(`#tipo-tramite option[value="${tramite}"]`).textContent;
-
-    if (!confirm(`Confirma el turno para el trámite: ${nombreTramite} el día ${fecha} a las ${horario}? Se enviará una confirmación a: ${correo}`)) {
+    if (!confirm(`¿Confirma el turno para el día ${fecha} a las ${horario}? Se enviará el comprobante a ${correo}`)) {
         return;
     }
+
+    // Deshabilitar botón para evitar múltiples clics
+    botonSolicitar.disabled = true;
+    botonSolicitar.textContent = "Procesando...";
 
     const nuevoTurnoData = {
         fecha: fecha,
@@ -289,152 +263,106 @@ async function procesarSolicitudDeTurno() {
         dni: dni,
         correo: correo, 
         registradoEn: new Date().toLocaleString('es-AR'),
-        // Añadimos un campo para el timestamp del servidor (útil para la función)
         timestamp: firebase.firestore.FieldValue.serverTimestamp() 
     };
     
     try {
-        // La llamada a coleccionTurnos.add() debería ser exitosa ahora.
+        // GUARDADO EN FIRESTORE
         await coleccionTurnos.add(nuevoTurnoData);
         
-        mostrarMensaje('mensaje-exito', `✅ Turno CONFIRMADO para ${nombre} el ${fecha} a las ${horario}. Se ha enviado la confirmación a ${correo}.`, true);
+        mostrarMensaje('mensaje-exito', `✅ Turno Confirmado. Verifique su correo electrónico: ${correo}`, true);
         
+        // Resetear formulario
         document.getElementById('formulario-turnos').reset(); 
         generarHorariosDisponibles(''); 
-        botonSolicitar.disabled = true;
-
+        
     } catch (error) {
-        // Si hay un error aquí, ya no debería ser por las claves de Firebase.
-        mostrarMensaje('mensaje-error', 'Error al guardar el turno en la Base de Datos. Verifique su conexión.', true);
-        console.error("Error al guardar en Firestore: ", error);
+        mostrarMensaje('mensaje-error', 'Error al guardar el turno. Verifique su conexión o las reglas de la base de datos.', true);
+        console.error("Error Firestore:", error);
+    } finally {
+        botonSolicitar.disabled = false;
+        botonSolicitar.textContent = "Solicitar Turno";
     }
 }
 
-
-// --- LÓGICA DE INICIO Y RUTAS (Controla index.html vs admin.html) ---
+// ====================================================================
+// 8. CONTROL DE RUTAS E INICIO (Admin vs Index)
+// ====================================================================
 
 if (esAdmin) {
-    // 💡 Lógica de LOGIN y Dashboard (admin.html)
-    
-    const PIN_CORRECTO = "1234"; // 🔑 PIN DE ACCESO A LA ADMINISTRACIÓN (CÁMBIALO)
-    
+    // LÓGICA DEL PANEL ADMINISTRADOR
+    const PIN_CORRECTO = "1234"; 
     const areaLogin = document.getElementById('area-login');
     const dashboardContenido = document.getElementById('dashboard-contenido');
     const btnLogin = document.getElementById('btn-login');
     const inputPin = document.getElementById('admin-pin');
-    const errorLogin = document.getElementById('login-error');
 
-    // Función de inicialización del Dashboard
     const iniciarDashboard = () => { 
         const inputFiltroFecha = document.getElementById('filtro-fecha');
+        const hoy = new Date().toISOString().split('T')[0];
         
-        const fechaHoy = new Date();
-        const fechaHoyString = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}-${String(fechaHoy.getDate()).padStart(2, '0')}`;
-        
-        // Inicializa los filtros
-        inputFiltroFecha.value = inputFiltroFecha.value || fechaHoyString;
-        document.getElementById('fecha-hoy').textContent = `Turnos del: ${inputFiltroFecha.value}`;
+        inputFiltroFecha.value = hoy;
+        document.getElementById('fecha-hoy').textContent = `Turnos del: ${hoy}`;
 
         inputFiltroFecha.addEventListener('change', () => {
             dibujarTablaAdmin(inputFiltroFecha.value);
             document.getElementById('fecha-hoy').textContent = `Turnos del: ${inputFiltroFecha.value}`;
         });
         
-        // Inicia el listener de turnos. Cuando los datos cargan, dibuja la tabla
-        iniciarListenerTurnos(() => {
-            dibujarTablaAdmin(inputFiltroFecha.value);
-        });
+        iniciarListenerTurnos(() => dibujarTablaAdmin(inputFiltroFecha.value));
     };
 
-    // Controla si ya hay una sesión de administrador abierta (localStorage)
     const checkSession = () => {
         if (localStorage.getItem(ADMIN_SESSION_TOKEN) === 'active') {
-            // Sesión activa: salta el login
             areaLogin.style.display = 'none';
             dashboardContenido.style.display = 'block';
             iniciarDashboard(); 
         } else {
-            // Sesión inactiva: muestra el login
             areaLogin.style.display = 'block';
             dashboardContenido.style.display = 'none';
         }
     };
-    
-    // Función de Login
-    const intentarLogin = () => {
-        if (inputPin.value.trim() === PIN_CORRECTO) { 
-            localStorage.setItem(ADMIN_SESSION_TOKEN, 'active'); // Establece la sesión
-            checkSession(); 
-        } else {
-            errorLogin.textContent = 'PIN incorrecto. Intente de nuevo.';
-            errorLogin.style.display = 'block';
-            inputPin.value = '';
-        }
-    };
-    
-    // Asignación de Eventos
-    if (btnLogin && inputPin) {
-        btnLogin.addEventListener('click', intentarLogin);
-        inputPin.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') intentarLogin();
+
+    if (btnLogin) {
+        btnLogin.addEventListener('click', () => {
+            if (inputPin.value.trim() === PIN_CORRECTO) { 
+                localStorage.setItem(ADMIN_SESSION_TOKEN, 'active');
+                checkSession(); 
+            } else {
+                alert("PIN Incorrecto");
+            }
         });
     }
-    
-    // Asignación de evento para cerrar sesión
+
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             localStorage.removeItem(ADMIN_SESSION_TOKEN);
-            checkSession();
-            location.reload(); // Recargar la página para limpiar todo
+            location.reload();
         });
     }
 
-    checkSession(); // Revisa la sesión al cargar la página
+    checkSession();
     
 } else {
-    // 💡 Lógica para la Vista del Ciudadano (index.html)
-    
-    if (inputFecha && selectHorario && botonSolicitar) { 
-        
-        // Inicia el listener de turnos. Cuando los datos cargan, genera los horarios
+    // LÓGICA DEL FORMULARIO CIUDADANO
+    if (inputFecha) { 
         iniciarListenerTurnos(() => {
-            // Esto se ejecuta al iniciar y cada vez que hay un cambio en Firestore
             generarHorariosDisponibles(inputFecha.value);
         });
         
-        // Asignación de Eventos
         inputFecha.addEventListener('change', () => {
             generarHorariosDisponibles(inputFecha.value);
         });
 
-        selectHorario.addEventListener('change', () => {
-            // Habilita el botón si hay un horario seleccionado
-            const todosLosCamposLlenos = selectHorario.value && 
-                                        document.getElementById('tipo-tramite').value &&
-                                        document.getElementById('nombre-solicitante').value.trim() &&
-                                        document.getElementById('dni-solicitante').value.trim() &&
-                                        document.getElementById('correo-solicitante').value.trim();
-                                        
-            botonSolicitar.disabled = !todosLosCamposLlenos; 
-            mostrarMensaje('mensaje-error', '', false);
-        });
-        
-        // Añadimos listeners a los campos para habilitar el botón cuando estén completos
+        botonSolicitar.addEventListener('click', procesarSolicitudDeTurno);
+
+        // Validación dinámica de campos para habilitar botón
         document.querySelectorAll('#formulario-turnos input, #formulario-turnos select').forEach(element => {
             element.addEventListener('input', () => {
-                const tramite = document.getElementById('tipo-tramite').value;
-                const horario = selectHorario.value;
-                const nombre = document.getElementById('nombre-solicitante').value.trim();
-                const dni = document.getElementById('dni-solicitante').value.trim();
-                const correo = document.getElementById('correo-solicitante').value.trim();
-                
-                const todosLlenos = tramite && horario && nombre && dni && correo;
-                if(botonSolicitar) botonSolicitar.disabled = !todosLlenos;
+                const formLleno = [...document.querySelectorAll('#formulario-turnos input, #formulario-turnos select')].every(i => i.value.trim() !== "");
+                botonSolicitar.disabled = !formLleno;
             });
         });
-
-
-        botonSolicitar.addEventListener('click', procesarSolicitudDeTurno);
     }
 }
