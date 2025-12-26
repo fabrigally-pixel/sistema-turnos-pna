@@ -6,64 +6,62 @@
     <title>Panel Admin - PNA Paraná</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Ajustes rápidos para que quede centrado en el celular */
-        .contenedor-turnos {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 15px;
+        /* Ajustes de centrado y visualización para celular */
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f0f2f5; }
+        .contenedor-admin { 
+            max-width: 500px; 
+            margin: 20px auto; 
+            padding: 20px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             text-align: center;
         }
-        #dashboard-contenido {
-            width: 100%;
+        .header-pna { background: #003366; color: white; padding: 20px; margin-bottom: 20px; }
+        input, select { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; }
+        
+        .btn-logout { 
+            background: #ff4d4d; color: white; border: none; padding: 10px 20px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;
         }
-        .header-admin {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .tabla-turnos {
-            width: 100%;
-            font-size: 14px;
-        }
-        .btn-eliminar-admin {
-            background-color: #d9534f;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
+        .btn-logout:hover { background: #cc0000; }
+
+        /* Estilo de la tabla para que no se deforme */
+        .tabla-turnos { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        .tabla-turnos th { background: #eee; padding: 10px; }
+        .tabla-turnos td { padding: 10px; border-bottom: 1px solid #ddd; }
+        
+        .btn-eliminar-admin { 
+            background: #d9534f; color: white; border: none; padding: 6px 10px; 
+            border-radius: 4px; cursor: pointer; font-size: 12px;
         }
     </style>
 </head>
 <body>
 
-    <header style="text-align: center; padding: 20px; background-color: #003366; color: white;">
-        <h1>Administración de Turnos</h1>
-        <p>PNA Paraná</p>
-    </header>
+    <div class="header-pna">
+        <h1>Administración PNA</h1>
+        <p>Prefectura Naval Paraná</p>
+    </div>
 
-    <main class="contenedor-turnos">
+    <main class="contenedor-admin">
         <div id="area-login">
-            <h2>Acceso Administrativo</h2>
-            <input type="password" id="admin-pin" placeholder="PIN de Seguridad" style="width: 80%; padding: 10px; margin-bottom: 10px;">
+            <h3>Acceso Restringido</h3>
+            <p>Ingrese el PIN para ver los turnos</p>
+            <input type="password" id="admin-pin" placeholder="PIN de Seguridad">
             <br>
-            <button type="button" id="btn-login" class="btn-solicitar">Acceder</button>
+            <button id="btn-login" class="btn-solicitar" style="width: 95%;">Ingresar</button>
         </div>
 
         <div id="dashboard-contenido" style="display: none;">
-            <div class="header-admin">
-                <h2 style="margin: 0;">Turnos Registrados</h2>
-                <button id="btn-logout" style="background: #666; color: white; border: none; padding: 5px 15px; border-radius: 5px;">Cerrar Sesión</button>
+            <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                <button id="btn-logout" class="btn-logout">Cerrar Sesión</button>
             </div>
 
-            <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <label><strong>Filtrar por Fecha:</strong></label>
-                <input type="date" id="filtro-fecha" style="width: 90%; padding: 10px; margin-top: 10px;">
-            </div>
+            <label><strong>Seleccionar Fecha:</strong></label>
+            <input type="date" id="filtro-fecha">
 
-            <h3 id="total-turnos" style="color: #003366;">Seleccione un día</h3>
+            <h3 id="total-turnos" style="color: #003366; margin-top: 20px;">Cargando...</h3>
 
             <div id="contenedor-tabla">
                 </div>
