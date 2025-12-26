@@ -14,33 +14,35 @@
     </header>
 
     <main class="contenedor-turnos">
-        
+
         <div id="area-login">
             <h2>Acceso Administrativo</h2>
             <p>Por favor, ingrese el PIN de seguridad para acceder a los turnos.</p>
-            
             <input type="password" id="admin-pin" placeholder="Ingrese el PIN" required>
-            <button type="button" id="btn-login">Acceder</button>
-            <p id="login-error" style="display: none;"></p>
+            <button type="button" id="btn-login" class="btn-solicitar">Acceder</button>
         </div>
-        <div id="dashboard-contenido" style="display: none;">
-            <h2>Turnos Registrados</h2>
-            
-            <label for="filtro-fecha">Ver Turnos para el Día:</label>
-            <input type="date" id="filtro-fecha" required>
 
-            <p id="fecha-hoy"></p>
-            <p id="total-turnos"></p>
-            
+        <div id="dashboard-contenido" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Turnos Registrados</h2>
+                <button id="btn-logout" style="background-color: #d9534f; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">Cerrar Sesión</button>
+            </div>
+
+            <div class="filtro-seccion" style="margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+                <label for="filtro-fecha"><strong>Filtrar por Fecha:</strong></label>
+                <input type="date" id="filtro-fecha" style="padding: 8px; width: 100%; margin-top: 10px;">
+            </div>
+
+            <h3 id="total-turnos" style="color: #003366;">Seleccione una fecha</h3>
+
             <div id="contenedor-tabla">
-                <p>Seleccione una fecha para ver los turnos...</p>
+                <p>Cargando información...</p>
             </div>
         </div>
-        </main>
+    </main>
 
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="script.js" defer></script>
 </body>
 </html>
