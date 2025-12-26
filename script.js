@@ -1,4 +1,4 @@
-// script.js - VERSIÓN FINAL INTEGRADA
+// script.js - VERSIÓN FINAL REPARADA
 const firebaseConfig = {
     apiKey: "AIzaSyBTLZI20dEdAbcnxlZ1YnvMz3twmhyvH_A",
     authDomain: "turnos-pna-parana-nuevo.firebaseapp.com",
@@ -24,12 +24,61 @@ let turnosTomados = [];
 const esAdmin = window.location.pathname.includes('admin.html');
 
 // --- LÓGICA DE TURNOS (CLIENTE) ---
+
+function mostrarError(texto, mostrar) {
+    const el = document.getElementById('mensaje-error');
+    if (el) { el.textContent = texto; el.style.display = mostrar ? 'block' : 'none'; }
+}
+
 function configurarFechaMinima() {
     const inputF = document.getElementById('fecha-turno');
     if (!inputF) return;
     const mañana = new Date();
     mañana.setDate(mañana.getDate() + 1);
     inputF.setAttribute('min', mañana.toISOString().split('T')[0]);
+}
+
+function generarHorariosDisponibles(fechaSeleccionada) {
+    const selectH = document.getElementById('horario-turno');
+    if (!selectH) return;
+
+    selectH.innerHTML = '<option value="">-- Seleccione un Horario --</option>';
+    selectH.disabled = true;
+    mostrarError("", false);
+
+    if (!fechaSeleccionada) return;
+
+    // Validar Fin de Semana y Feriados
+    const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
+    const dia = fechaObj.getDay(); // 0: Dom, 6: Sab
+
+    if (dia === 0 || dia === 6 || feriados.includes(fechaSeleccionada)) {
+        mostrarError("La fecha seleccionada es feriado o fin de semana.", true);
+        return;
+    }
+
+    let h = HORA_INICIO, m = 0;
+    let hayDisponibilidad = false;
+
+    while (h < HORA_FIN || (h === HORA_FIN && m === 0)) {
+        const hhmm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        const ocupado = turnosTomados.some(t => t.fecha === fechaSeleccionada && t.horario === hhmm);
+
+        if (!ocupado) {
+            const opt = document.createElement('option');
+            opt.value = hhmm; opt.textContent = hhmm;
+            selectH.appendChild(opt);
+            hayDisponibilidad = true;
+        }
+        m += INTERVALO;
+        if (m >= 60) { h++; m = 0; }
+    }
+
+    if (hayDisponibilidad) {
+        selectH.disabled = false;
+    } else {
+        mostrarError("No hay turnos disponibles para esta fecha.", true);
+    }
 }
 
 function validarBotonSolicitar() {
@@ -40,7 +89,28 @@ function validarBotonSolicitar() {
     btn.disabled = incompleto;
 }
 
+async function procesarSolicitudDeTurno() {
+    const btn = document.getElementById('boton-solicitar');
+    const data = {
+        tramite: document.getElementById('tipo-tramite').value,
+        fecha: document.getElementById('fecha-turno').value,
+        horario: document.getElementById('horario-turno').value,
+        nombre: document.getElementById('nombre-solicitante').value.trim(),
+        dni: document.getElementById('dni-solicitante').value.trim(),
+        correo: document.getElementById('correo-solicitante').value.trim(),
+        registradoEn: new Date().toLocaleString('es-AR')
+    };
+
+    btn.disabled = true;
+    try {
+        await coleccionTurnos.add(data);
+        alert("✅ Turno Confirmado exitosamente.");
+        location.reload(); 
+    } catch (e) { alert("Error al guardar."); btn.disabled = false; }
+}
+
 // --- LÓGICA ADMINISTRADOR ---
+
 function dibujarTablaAdmin(fechaFiltro) {
     const contenedor = document.getElementById('contenedor-tabla');
     if (!contenedor) return;
@@ -77,6 +147,7 @@ async function eliminarTurno(id) {
 }
 
 // --- INICIALIZACIÓN ---
+
 if (esAdmin) {
     const PIN_CORRECTO = "PNA2025parana";
     const areaLogin = document.getElementById('area-login');
@@ -110,8 +181,24 @@ if (esAdmin) {
     });
 } else {
     configurarFechaMinima();
-    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', validarBotonSolicitar));
+    const inputFecha = document.getElementById('fecha-turno');
+    
+    // Escuchar cambios en la fecha para generar horarios
+    inputFecha?.addEventListener('change', () => {
+        generarHorariosDisponibles(inputFecha.value);
+        validarBotonSolicitar();
+    });
+
+    // Validar el resto de los campos
+    document.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', validarBotonSolicitar);
+    });
+
+    // Sincronizar con Firebase
     coleccionTurnos.onSnapshot(snap => {
         turnosTomados = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        if (inputFecha?.value) generarHorariosDisponibles(inputFecha.value);
     });
+
+    document.getElementById('boton-solicitar')?.addEventListener('click', procesarSolicitudDeTurno);
 }
